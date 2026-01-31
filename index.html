@@ -120,7 +120,7 @@ function pop_world_0(feature, layer) {
 
     if (feature.properties['web']) {
         layer.on("click", function () {
-            window.open(feature.properties['web'], '_self');
+            window.open(feature.properties['web'], '_blank');
         });
     }
 }
