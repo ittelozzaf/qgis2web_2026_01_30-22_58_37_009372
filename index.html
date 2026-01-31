@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/qgis2web.css">
+    <link rel="stylesheet" href="css/fontawesome-all.min.css">
+
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Estilo personalizado para el tooltip */
+        .leaflet-tooltip.my-tooltip {
+            background-color: rgba(240, 240, 240, 0.9);
+            color: #000;
+            border: 1px solid black;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        }
+    </style>
+    <title>Mapa Interactivo</title>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script src="js/qgis2web_expressions.js"></script>
+<script src="js/leaflet.js"></script>
+<script src="js/leaflet.rotatedMarker.js"></script>
+<script src="js/leaflet.pattern.js"></script>
+<script src="js/leaflet-hash.js"></script>
+<script src="js/Autolinker.min.js"></script>
+<script src="js/rbush.min.js"></script>
+<script src="js/labelgun.min.js"></script>
+<script src="js/labels.js"></script>
+<script src="data/world_0.js"></script>
+
+<script>
+var map = L.map('map', {
+    zoomControl: false,
+    maxZoom: 3,
+    minZoom: 3
+}).fitBounds([
+    [-85.74290053346357,-179.15096828347598],
+    [84.51432811296904,179.150968283476]
+]);
+
+var hash = new L.Hash(map);
+
+map.attributionControl.setPrefix(
+    '<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> · ' +
+    '<a href="https://leafletjs.com">Leaflet</a> · ' +
+    '<a href="https://qgis.org">QGIS</a>'
+);
+
+var bounds_group = new L.featureGroup([]);
+
+/* ===============================
+   LIMITE TOTAL DEL MAPA
+   =============================== */
+var southWest = L.latLng(-85.74290053346357, -170);
+var northEast = L.latLng(84.51432811296904, 170);
+var maxBounds = L.latLngBounds(southWest, northEast);
+map.setMaxBounds(maxBounds);
+map.on('drag', function() {
+    map.panInsideBounds(maxBounds, { animate: false });
+});
+
+/* ===============================
+   TOOLTIP (solo para países con 'Descr.')
+   =============================== */
+function pop_world_0(feature, layer) {
+    if (!feature.properties['Descr.']) return;
+
+    var content =
+        (feature.properties['COUNTRY'] ?? "") + "</b>" + "<br>" +
+        (feature.properties['Descr.'] ?? "");
+
+    var tooltip = L.tooltip({
+        permanent: false,
+        direction: 'auto',
+        offset: [12, 12],
+        className: 'my-tooltip'
+    }).setContent(content);
+
+    layer.on("mouseover", function(e){
+        tooltip.setLatLng(e.latlng);
+        tooltip.addTo(map);
+
+        // Resaltar borde solo si tiene 'web'
+        if(feature.properties['web']){
+            layer.setStyle({ weight: layer.options.weight + 1, fillOpacity: 0.9 });
+        }
+    });
+
+    layer.on("mousemove", function(e){
+        tooltip.setLatLng(e.latlng);
+    });
+
+    layer.on("mouseout", function(){
+        map.removeLayer(tooltip);
+
+        // Restaurar grosor y opacidad originales
+        if(feature.properties['web']){
+            layer.setStyle({ weight: layer.options.weight - 1, fillOpacity: 1 });
+        }
+    });
+
+    if (feature.properties['web']) {
+        layer.on("click", function () {
+            window.open(feature.properties['web'], '_self');
+        });
+    }
+}
+
+/* ===============================
+   SIMBOLOGÍA ORIGINAL
+   =============================== */
+function style_world_0_0(feature) {
+    var baseStyle = {
+        pane: 'pane_world_0',
+        opacity: 1,
+        color: 'rgba(42,42,42,1.0)',
+        weight: 1,
+        fill: true,
+        fillOpacity: 1,
+        interactive: true
+    };
+
+    switch(String(feature.properties['COUNTRY'])) {
+        case '<center><b>COSTA RICA</B)</center>':
+        case '<center><b>CROATIA</B)</center>':
+        case '<center><b>EGYPT</B)</center>':
+        case '<center><b>FRANCE</B)</center>':
+        case '<center><b>GEORGIA</B)</center>':
+        case '<center><b>GREECE</B)</center>':
+        case '<center><b>INDIA</B)</center>':
+        case '<center><b>IRELAND</B)</center>':
+        case '<center><b>ISRAEL</B)</center>':
+        case '<center><b>ITALY</B)</center>':
+        case '<center><b>MOROCCO</B)</center>':
+        case '<center><b>NORWAY</B)</center>':
+        case '<center><b>PORTUGAL</B)</center>':
+        case '<center><b>RUSSIA</B)</center>':
+        case '<center><b>SOUTH AFRICA</B)</center>':
+        case '<center><b>SPAIN</B)</center>':
+        case '<center><b>SWEDEN</B)</center>':
+        case '<center><b>THAILAND</B)</center>':
+        case '<center><b>TURKEY</B)</center>':
+        case '<center><b>UNITED ARAB EMIRATES</B)</center>':
+        case '<center><b>UNITED KINGDOM</B)</center>':
+        case '<center><b>WESTERN SAHARA</B)</center>':
+            baseStyle.fillColor = 'rgba(60,115,154,1.0)';
+            break;
+        default:
+            baseStyle.fillColor = 'rgba(232,232,232,1.0)';
+            break;
+    }
+
+    return baseStyle;
+}
+
+map.createPane('pane_world_0');
+map.getPane('pane_world_0').style.zIndex = 400;
+
+var layer_world_0 = new L.geoJson(json_world_0, {
+    attribution: '',
+    interactive: true,
+    dataVar: 'json_world_0',
+    layerName: 'layer_world_0',
+    pane: 'pane_world_0',
+    onEachFeature: pop_world_0,
+    style: style_world_0_0
+});
+
+bounds_group.addLayer(layer_world_0);
+map.addLayer(layer_world_0);
+
+/* ===============================
+   HILLSHADE
+   =============================== */
+map.createPane('pane_hillshade_1');
+map.getPane('pane_hillshade_1').style.zIndex = 401;
+
+var layer_hillshade_1 = L.tileLayer(
+    'https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=DBQ4PMB5BYq7xYP0UJ3e',
+    {
+        pane: 'pane_hillshade_1',
+        opacity: 0.3,
+        minZoom: 3,
+        maxZoom: 3,
+        minNativeZoom: 0,
+        maxNativeZoom: 12
+    }
+);
+
+map.addLayer(layer_hillshade_1);
+
+</script>
+</body>
+</html>
